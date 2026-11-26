@@ -1,0 +1,16 @@
+name: Thesis hosted validation
+on:
+  push:
+    branches: [check-thesis-hosted-1878]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build submission without cached layers
+        run: docker build --pull --no-cache --progress=plain -t httparena-thesis-http-server frameworks/thesis-http-server
+      - name: Validate the built image
+        run: VALIDATE_SKIP_BUILD=1 bash scripts/validate.sh thesis-http-server
