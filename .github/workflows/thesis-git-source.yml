@@ -1,0 +1,29 @@
+name: Thesis build without codeload
+on:
+  push:
+    branches: [check-thesis-git-source-1878]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that codeload is unreachable inside Docker
+        run: |
+          docker build --no-cache --add-host codeload.github.com:127.0.0.1 - <<'PROBE'
+          FROM php:8.6-cli-alpine
+          RUN grep -F codeload.github.com /etc/hosts && \
+              (curl --noproxy '*' --max-time 5 https://codeload.github.com/; test "$?" = 7)
+          PROBE
+      - name: Build submission from scratch with codeload blocked
+        env:
+          NO_PROXY: codeload.github.com
+        run: |
+          docker build --pull --no-cache --progress=plain \
+            --add-host codeload.github.com:127.0.0.1 \
+            --build-arg NO_PROXY --build-arg no_proxy="$NO_PROXY" \
+            -t httparena-thesis-http-server frameworks/thesis-http-server
+      - name: Validate all subscribed profiles
+        run: VALIDATE_SKIP_BUILD=1 bash scripts/validate.sh thesis-http-server
